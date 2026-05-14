@@ -1,31 +1,31 @@
 import cv2
-import pickle
+import json
 import cvzone
 import numpy as np
+
+# Get camera/location name from user
+camera_name = input("Enter camera/location name (default: 'cam1'): ").strip() or "cam1"
+json_file = f"{camera_name}.json"
 
 # Video feed
 cap = cv2.VideoCapture("carPark.mp4")
 
-with open("CarParkPos", "rb") as f:
-    posList = pickle.load(f)
-
-width, height = 107, 48
-
-
-def unpack_position(pos):
-    if len(pos) == 2:
-        x, y = pos
-        return x, y, x + width, y + height
-
-    x1, y1, x2, y2 = pos
-    return x1, y1, x2, y2
+try:
+    with open(json_file, "r") as f:
+        parking_slots = json.load(f)
+except Exception:
+    print(f"Error: Could not load {json_file}")
+    parking_slots = {}
 
 
 def checkParkingSpace(imgPro):
     spaceCounter = 0
 
-    for pos in posList:
-        x1, y1, x2, y2 = unpack_position(pos)
+    for slot_name, slot_data in parking_slots.items():
+        x1 = slot_data["x1"]
+        y1 = slot_data["y1"]
+        x2 = slot_data["x2"]
+        y2 = slot_data["y2"]
 
         imgCrop = imgPro[y1:y2, x1:x2]
         # cv2.imshow(str(x * y), imgCrop)
@@ -41,12 +41,18 @@ def checkParkingSpace(imgPro):
 
         cv2.rectangle(img, (x1, y1), (x2, y2), color, thickness)
         cvzone.putTextRect(
-            img, str(count), (x1, y2 - 3), scale=1, thickness=2, offset=0, colorR=color
+            img,
+            f"{slot_name}: {count}",
+            (x1, y2 - 3),
+            scale=1,
+            thickness=2,
+            offset=0,
+            colorR=color,
         )
 
     cvzone.putTextRect(
         img,
-        f"Free: {spaceCounter}/{len(posList)}",
+        f"Free: {spaceCounter}/{len(parking_slots)}",
         (100, 50),
         scale=3,
         thickness=5,
